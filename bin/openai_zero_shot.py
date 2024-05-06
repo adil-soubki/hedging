@@ -26,31 +26,24 @@ from src.core.app import harness
 from src.core.context import Context
 from src.core.path import dirparent
 from src.core import keychain
-from src.data import prompts, questions
+from src.data import prompts, rr
 
 
 TEMPLATE = prompts.load("gpt-zero-shot")
 
 
-def load_questions(window_size: int = 5) -> pd.DataFrame:
-    def fn(row: pd.Series) -> pd.Series:
-        ctx = row.context.split("\n")
-        start, end = max(0, row.sno - 1 - window_size), row.sno + window_size
-        assert len(ctx[start:end]) <= (window_size * 2) + 1
-        assert ctx[row.sno - 1].endswith("🛑")
-        row.context = "\n".join(ctx[start:end])
-        return row
-    return questions.load().apply(fn, axis=1)
+def load_utterances() -> pd.DataFrame:
+    return rr.load()[:10]
 
 
 @backoff.on_exception(backoff.expo, openai.RateLimitError)
 async def get_completion(
     client: openai.AsyncOpenAI,
-    question: pd.Series,
+    utterance: pd.Series,
     model_name: str,
     temperature: float = 1.0
 ) -> dict[str, Any]:
-    prompt = TEMPLATE.format(context=question.context, question=question.question)
+    prompt = TEMPLATE.format(utterance=utterance.utterance)
     result = await client.chat.completions.create(
         messages=[
             {
@@ -61,8 +54,7 @@ async def get_completion(
         model=model_name,
         temperature=temperature,
     )
-    assert len(result.choices) == 1
-    return question.to_dict() | {
+    return utterance.to_dict() | {
         "prompt_template": TEMPLATE,
         "prompt": prompt,
         "temperature": temperature,
@@ -77,8 +69,8 @@ async def get_completions(
 ) -> list[dict[str, Any]]:
     ret = []
     client = openai.AsyncOpenAI()
-    qs = map(operator.itemgetter(1), load_questions().iterrows())
-    tasks = [get_completion(client, q, model_name, temperature) for q in qs]
+    us = map(operator.itemgetter(1), load_utterances().iterrows())
+    tasks = [get_completion(client, u, model_name, temperature) for u in us]
     for chunk in tqdm(list(chunked(tasks, n=60))):
         ret += await asyncio.gather(*chunk)
         # Trying to respect rate limits.

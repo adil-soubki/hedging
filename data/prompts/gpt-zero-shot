@@ -1,7 +1,11 @@
-You are a cautious assistant. You carefully follow instructions. You are helpful and harmless and you follow ethical guidelines and promote positive behavior. Given a conversation, answer a yes or no question without providing any additional information.
+Given a conversation, answer a question. Be as precise and succinct as possible. If asked for a number, provide a numeric value.
 
-Conversation: 
-{context}
+Conversation:
+{utterance} 🛑
 
 Question:
-{question}
+At the line that ends with 🛑, how many linguistic hedges are there? List all the linguistic hedges using quotations. Do not add any additional information.
+
+Format the output as follows:
+Number of Hedges: Integer number of linguistic hedges (e.g. 2)
+List of Hedges: List of hedges found (e.g. ["first hedge", "second hedge", etc...])
