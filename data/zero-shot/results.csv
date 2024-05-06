@@ -1,0 +1,2 @@
+path,accuracy_presence,accuracy_count,jaccard
+./data/zero-shot/gpt-3.5-turbo-0125_66e3fea13c8442d0_20240506.154046.csv.gz,0.2821350762527233,0.21659404502541757,0.15785826676349551

@@ -27,13 +27,14 @@ from src.core.context import Context
 from src.core.path import dirparent
 from src.core import keychain
 from src.data import prompts, rr
+from src.data.evaluate import update_evaluations
 
 
 TEMPLATE = prompts.load("gpt-zero-shot")
 
 
 def load_utterances() -> pd.DataFrame:
-    return rr.load()[:10]
+    return rr.load()
 
 
 @backoff.on_exception(backoff.expo, openai.RateLimitError)
@@ -99,6 +100,8 @@ def main(ctx: Context) -> None:
     os.makedirs(args.outdir, exist_ok=True)
     completions.to_csv(outpath, index=False, compression="gzip")
     ctx.log.info("wrote: %s", outpath)
+    update_evaluations(args.outdir)
+    ctx.log.info("updated: %s", os.path.join(args.outdir, "results.csv"))
 
 
 if __name__ == "__main__":

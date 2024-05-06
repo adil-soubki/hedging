@@ -14,4 +14,7 @@ def load() -> pd.DataFrame:
         os.path.join(RR_DIR, "RoadrunnerOneFile.csv")
     ).rename(columns={"Unnamed: 0": "Index", "Transcript": "Utterance"})
     ret.columns = [c.lower() for c in ret.columns]
+    ret = ret.assign(
+        num_hedges=ret.hedges.str.split(", ").str.len().fillna(0).astype(int)
+    )
     return ret
