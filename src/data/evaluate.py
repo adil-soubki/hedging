@@ -5,16 +5,16 @@ import os
 import pandas as pd
 
 
-def update_evaluations(dirpath: str) -> None:
+def update_evaluations(dirpath: str) -> pd.DataFrame:
     ret = []
     for path in glob.glob(os.path.join(dirpath, "*.csv.gz")):
         df = pd.read_csv(path, compression="gzip")
         ret.append({
             "path": path,
         } | do_evaluation(df))
-    pd.DataFrame(ret).sort_values("accuracy_presence").to_csv(
-        os.path.join(dirpath, "results.csv"), index=False
-    )
+    ret = pd.DataFrame(ret).sort_values("accuracy_presence")
+    ret.to_csv(os.path.join(dirpath, "results.csv"), index=False)
+    return ret
 
 
 def do_evaluation(df: pd.DataFrame) -> dict[str, float]:
@@ -22,7 +22,7 @@ def do_evaluation(df: pd.DataFrame) -> dict[str, float]:
         pred_num_hedges = 0
         pred_hedges = []
         for line in row.generation.split("\n"):
-            if line.startswith("Number of Hedges: "):
+            if line.startswith("Number of Hedges: ") and line.split()[-1].isdigit():
                 pred_num_hedges = int(line.split()[-1])
             if line.startswith("List of Hedges: "):
                 ln = line.replace("List of Hedges: ", "")[1:-1]
@@ -30,6 +30,7 @@ def do_evaluation(df: pd.DataFrame) -> dict[str, float]:
         row["pred_num_hedges"] = pred_num_hedges
         row["pred_hedges"] = pred_hedges
         return row
+    df = df.assign(hedges=df.hedges.fillna(""))
     df = df.apply(fn, axis=1)
     df = df.assign(
         hedge_present=df.num_hedges > 0,

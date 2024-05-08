@@ -1,11 +1,11 @@
 Given a conversation, answer a question. Be as precise and succinct as possible. If asked for a number, provide a numeric value.
 
+Format the output as follows:
+Number of Hedges: Integer number of linguistic hedges (e.g. 0)
+List of Hedges: List of hedges found (e.g. ["first hedge", "second hedge", etc...])
+
 Conversation:
 {utterance} 🛑
 
 Question:
 At the line that ends with 🛑, how many linguistic hedges are there? List all the linguistic hedges using quotations. Do not add any additional information.
-
-Format the output as follows:
-Number of Hedges: Integer number of linguistic hedges (e.g. 0)
-List of Hedges: List of hedges found (e.g. ["first hedge", "second hedge", etc...])
