@@ -44,6 +44,8 @@ def do_evaluation(df: pd.DataFrame) -> dict[str, float]:
         else:
             row["jaccard"] = len(preds & refs) / len(preds | refs)
         return row
+    # NOTE: Some hedge annotations have parentheses around them.
+    df = df.assign(hedges=df.hedges.str.replace("(", "").str.replace(")", ""))
     df = df.assign(hedges=df.hedges.str.split(", ").fillna("").apply(list))
     df = df.apply(add_jaccard, axis=1)
 

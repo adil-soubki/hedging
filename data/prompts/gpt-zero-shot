@@ -7,5 +7,5 @@ Question:
 At the line that ends with 🛑, how many linguistic hedges are there? List all the linguistic hedges using quotations. Do not add any additional information.
 
 Format the output as follows:
-Number of Hedges: Integer number of linguistic hedges (e.g. 2)
+Number of Hedges: Integer number of linguistic hedges (e.g. 0)
 List of Hedges: List of hedges found (e.g. ["first hedge", "second hedge", etc...])

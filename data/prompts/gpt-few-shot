@@ -1,0 +1,51 @@
+Given a conversation, answer a question. Be as precise and succinct as possible. If asked for a number, provide a numeric value.
+
+Format the output as follows:
+Number of Hedges: Integer number of linguistic hedges (e.g. 0)
+List of Hedges: List of hedges found (e.g. ["first hedge", "second hedge", etc...])
+
+Below are some examples separated by "---". Complete the last one.
+
+Conversation:
+and he’s like oh I’m smart you know 🛑
+
+Question:
+At the line that ends with 🛑, how many linguistic hedges are there? List all the linguistic hedges using quotations. Do not add any additional information.
+
+Answer:
+Number of Hedges: 2
+List of Hedges: ["like", "you know"]
+
+---
+
+Conversation:
+it’s a uh a roadrunner and coyote cartoon 🛑
+
+Question:
+At the line that ends with 🛑, how many linguistic hedges are there? List all the linguistic hedges using quotations. Do not add any additional information.
+
+Answer:
+Number of Hedges: 0
+List of Hedges: []
+
+---
+
+Conversation:
+and like he ends up in pitch black 🛑
+
+Question:
+At the line that ends with 🛑, how many linguistic hedges are there? List all the linguistic hedges using quotations. Do not add any additional information.
+
+Answer:
+Number of Hedges: 1
+List of Hedges: ["like"]
+
+---
+
+Conversation:
+{utterance} 🛑
+
+Question:
+At the line that ends with 🛑, how many linguistic hedges are there? List all the linguistic hedges using quotations. Do not add any additional information.
+
+Answer:

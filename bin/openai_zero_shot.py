@@ -30,11 +30,11 @@ from src.data import prompts, rr
 from src.data.evaluate import update_evaluations
 
 
-TEMPLATE = prompts.load("gpt-zero-shot")
+TEMPLATE = prompts.load("gpt-few-shot")
 
 
 def load_utterances() -> pd.DataFrame:
-    return rr.load()
+    return rr.load()[:200]
 
 
 @backoff.on_exception(backoff.expo, openai.RateLimitError)
