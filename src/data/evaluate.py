@@ -11,6 +11,8 @@ def update_evaluations(dirpath: str) -> pd.DataFrame:
         df = pd.read_csv(path, compression="gzip")
         ret.append({
             "path": path,
+            "phash": os.path.basename(path).split("_")[-2],
+            "model": os.path.basename(path).split("_")[-3],
         } | do_evaluation(df))
     ret = pd.DataFrame(ret).sort_values("accuracy_presence")
     ret.to_csv(os.path.join(dirpath, "results.csv"), index=False)
@@ -56,5 +58,6 @@ def do_evaluation(df: pd.DataFrame) -> dict[str, float]:
     return {
         "accuracy_presence": accuracy_presence,
         "accuracy_count": accuracy_count,
-        "jaccard": jaccard
+        "jaccard": jaccard,
+        "count": len(df),
     }

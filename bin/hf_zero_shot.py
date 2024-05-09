@@ -9,6 +9,7 @@ Usage Examples:
     $ hf_zero_shot.py --model meta-llama/Meta-Llama-3-8B-Instruct
 
 TODO:
+    * Add the name of the prompt template used (e.g. gpt-zero-shot).
     * Support reading in a generation config.
 """
 import datetime
@@ -63,10 +64,11 @@ def get_completions(model_name: str) -> list[dict[str, Any]]:
         device_map="auto",
         model_kwargs={"torch_dtype": torch.bfloat16},
     )
+    # This is specific to Llama so only do it when that is the model.
     terminators = [
         pipeline.tokenizer.eos_token_id,
         pipeline.tokenizer.convert_tokens_to_ids("<|eot_id|>")
-    ]
+    ] if "llama" in model_name.lower() else pipeline.tokenizer.eos_token_id
     if not getattr(pipeline.model.config, "is_encoder_decoder"):
         pipeline.tokenizer.padding_side = "left"  # For decoder-only models.
     if pipeline.tokenizer.pad_token_id is None:
@@ -74,7 +76,7 @@ def get_completions(model_name: str) -> list[dict[str, Any]]:
     utts = load_utterances(pipeline)
     pipeline_iter = pipeline(
         utts,
-        batch_size=4,
+        batch_size=16,
         max_new_tokens=256,
         eos_token_id=terminators,
         pad_token_id=pipeline.tokenizer.eos_token_id,
