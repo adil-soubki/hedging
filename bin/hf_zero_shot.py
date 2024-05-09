@@ -7,6 +7,9 @@ Usage Examples:
     $ hf_zero_shot.py                   # No args needed.
     $ hf_zero_shot.py -o path/to/outdir # Custom outdir.
     $ hf_zero_shot.py --model meta-llama/Meta-Llama-3-8B-Instruct
+
+TODO:
+    * Support reading in a generation config.
 """
 import datetime
 import hashlib
@@ -18,8 +21,10 @@ from typing import Any
 import torch
 import pandas as pd
 import transformers as tf
+from datasets import Dataset
 from more_itertools import chunked
 from tqdm import tqdm
+from transformers.pipelines.pt_utils import KeyDataset
 
 from src.core.app import harness
 from src.core.context import Context
@@ -29,32 +34,47 @@ from src.data import prompts, rr
 from src.data.evaluate import update_evaluations
 
 
-TEMPLATE = prompts.load("gpt-few-shot")
+TEMPLATE = None
 
 
-def load_utterances() -> pd.DataFrame:
-    return rr.load()[:5]
+def load_utterances(pipeline: tf.Pipeline) -> Dataset:
+    utts = rr.load()
+
+    def get_prompt(utterance: str) -> str:
+        return pipeline.tokenizer.apply_chat_template(
+            [{
+                "role": "user",
+                "content": TEMPLATE.format(utterance=utterance)
+            }],
+            tokenize=False,
+            add_generation_prompt=True
+        )
+
+    utts = utts.assign(prompt=utts.utterance.map(get_prompt))
+    return KeyDataset(Dataset.from_pandas(utts, preserve_index=False), "prompt")
 
 
-def get_completion(
-    pipeline: tf.Pipeline,
-    utterance: pd.Series,
-    model_name: str,
-) -> dict[str, Any]:
-    prompt = pipeline.tokenizer.apply_chat_template(
-        [{
-            "role": "user",
-            "content": TEMPLATE.format(utterance=utterance.utterance)
-        }],
-        tokenize=False,
-        add_generation_prompt=True
+def get_completions(model_name: str) -> list[dict[str, Any]]:
+    ret = []
+    torch.backends.cuda.matmul.allow_tf32 = True  # Improves inference speed.
+    torch.compile(mode="reduce-overhead")         # Improves inference speed.
+    pipeline = tf.pipeline(
+        model=model_name,
+        device_map="auto",
+        model_kwargs={"torch_dtype": torch.bfloat16},
     )
     terminators = [
         pipeline.tokenizer.eos_token_id,
         pipeline.tokenizer.convert_tokens_to_ids("<|eot_id|>")
     ]
-    result = pipeline(
-        prompt,
+    if not getattr(pipeline.model.config, "is_encoder_decoder"):
+        pipeline.tokenizer.padding_side = "left"  # For decoder-only models.
+    if pipeline.tokenizer.pad_token_id is None:
+        pipeline.tokenizer.pad_token_id = pipeline.tokenizer.eos_token_id
+    utts = load_utterances(pipeline)
+    pipeline_iter = pipeline(
+        utts,
+        batch_size=4,
         max_new_tokens=256,
         eos_token_id=terminators,
         pad_token_id=pipeline.tokenizer.eos_token_id,
@@ -62,26 +82,14 @@ def get_completion(
         temperature=0.6,
         top_p=0.9,
     )
-    return utterance.to_dict() | {
-        "prompt_template": TEMPLATE,
-        "prompt": prompt,
-        "model_name": model_name,
-        "timestamp": datetime.datetime.now(),
-        "generation": result[0]["generated_text"],
-    }
-
-
-def get_completions(model_name: str) -> list[dict[str, Any]]:
-    torch.backends.cuda.matmul.allow_tf32 = True  # Improves inference speed.
-    torch.compile(mode="reduce-overhead")         # Improves inference speed.
-    pipeline = tf.pipeline(
-        task="text-generation",
-        model=model_name,
-        device_map="auto",
-        model_kwargs={"torch_dtype": torch.bfloat16},
-    )
-    us = list(map(operator.itemgetter(1), load_utterances().iterrows()))
-    return [get_completion(pipeline, u, model_name) for u in tqdm(us)]
+    for rdx, result in enumerate(tqdm(pipeline_iter, total=len(utts))):
+        ret.append(utts.dataset[rdx] | {
+            "prompt_template": TEMPLATE,
+            "model_name": model_name,
+            "timestamp": datetime.datetime.now(),
+            "generation": result[0]["generated_text"],
+        })
+    return ret
 
 
 def main(ctx: Context) -> None:
@@ -90,9 +98,12 @@ def main(ctx: Context) -> None:
     )
     ctx.parser.add_argument("-o", "--outdir", default=default_outdir)
     ctx.parser.add_argument("-m", "--model", default="meta-llama/Meta-Llama-3-8B-Instruct")
-    #  ctx.parser.add_argument("-p", "--prompt", default="gpt-zero-shot")
+    ctx.parser.add_argument("-p", "--prompt", default="gpt-zero-shot")
     args = ctx.parser.parse_args()
-    # Generate dialogues asynchronously.
+    # Set the current prompt template.
+    global TEMPLATE
+    TEMPLATE = prompts.load(args.prompt)
+    # Generate dialogues.
     completions = pd.DataFrame(get_completions(args.model))
     # Write generations to file.
     model_name = completions.iloc[0]["model_name"]
